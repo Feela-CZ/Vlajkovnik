@@ -25,7 +25,6 @@ const GROUPS = {
 const app = document.querySelector('#app');
 let mapFeatures = [];
 let selectedGroup = 'C';
-let selectedDifficulty = 'easy';
 let session = null;
 
 const asStates = entries => entries.map(([code, name]) => ({ code, name, flag: code.toLowerCase() }));
@@ -47,7 +46,7 @@ function renderSetup() {
     <section class="setup">
       <p class="eyebrow">Trénink zeměpisné paměti</p>
       <h1>Vlajky nejsou jen obrázky.</h1>
-      <p class="intro">U každé otázky nejdřív určíš stát podle vlajky a hned potom jeho polohu na slepé mapě. Vyber blok a obtížnost.</p>
+      <p class="intro">U každé otázky nejdřív určíš stát podle vlajky a hned potom jeho polohu na slepé mapě. Vyber blok a začni.</p>
       <div class="setup-grid">
         <div class="setup-panel">
           <h2>Studijní blok</h2>
@@ -55,16 +54,14 @@ function renderSetup() {
             ${Object.entries(GROUPS).map(([id, group]) => `<button class="group-option" data-group="${id}" aria-pressed="${id === selectedGroup}"><b class="group-letter">${id}</b><span><strong>${group.label} · ${group.states.length} států</strong>${group.description}</span></button>`).join('')}
           </div>
         </div>
-        <div class="setup-panel">
-          <h2>Obtížnost</h2>
-          <button class="difficulty-option" data-difficulty="easy" aria-pressed="${selectedDifficulty === 'easy'}"><i class="difficulty-mark"></i><span><strong>Snadná</strong>Chybné volby zůstanou červené a nelze je opakovat.</span></button>
-          <button class="difficulty-option" data-difficulty="hard" aria-pressed="${selectedDifficulty === 'hard'}"><i class="difficulty-mark"></i><span><strong>Těžká</strong>Chybná volba se krátce ukáže a pak zmizí. Musíš si ji pamatovat.</span></button>
+        <div class="setup-panel session-rules">
+          <h2>Jak funguje test</h2>
+          <p>Každý stát má jeden pokus na název a jeden na polohu. Po odpovědi vždy uvidíš správné řešení a už zodpovězené státy se v dalších kolech vyřadí.</p>
           <button class="start-button" id="start-session">Spustit trénink</button>
         </div>
       </div>
     </section>`;
   app.querySelectorAll('[data-group]').forEach(button => button.addEventListener('click', () => { selectedGroup = button.dataset.group; renderSetup(); }));
-  app.querySelectorAll('[data-difficulty]').forEach(button => button.addEventListener('click', () => { selectedDifficulty = button.dataset.difficulty; renderSetup(); }));
   app.querySelector('#start-session').addEventListener('click', startSession);
 }
 
@@ -72,16 +69,15 @@ function startSession() {
   const states = GROUPS[selectedGroup].states;
   session = {
     group: selectedGroup,
-    difficulty: selectedDifficulty,
-    questions: shuffle(states).map(state => ({ ...state, nameMistakes: 0, mapMistakes: 0 })),
+    questions: shuffle(states).map(state => ({ ...state })),
     index: 0,
     phase: 'name',
     nameFirst: 0,
     mapFirst: 0,
     nameErrors: 0,
     mapErrors: 0,
-    blockedNames: new Set(),
-    blockedMap: new Set(),
+    seenNames: new Set(),
+    seenMap: new Set(),
     locked: false,
     mapView: initialMapView(selectedGroup),
     mapDrag: null,
@@ -95,6 +91,17 @@ function currentQuestion() { return session.questions[session.index]; }
 function progressPercent() {
   const half = session.phase === 'map' ? .5 : 0;
   return ((session.index + half) / session.questions.length) * 100;
+}
+
+function scorePercent(correct, answered) {
+  return answered ? `${Math.round((correct / answered) * 100)} %` : '—';
+}
+
+function revealName(name) {
+  app.querySelectorAll('.revealed-name').forEach(element => {
+    element.textContent = `Správně: ${name}`;
+    element.classList.add('is-visible');
+  });
 }
 
 function initialMapView(group) {
@@ -141,7 +148,7 @@ function renderMap() {
   const active = new Set(GROUPS[session.group].states.map(state => state.code));
   const view = session.mapView;
   return `<svg class="world-map ${interactive ? 'map-select' : ''}" viewBox="${view.x} ${view.y} ${view.width} ${view.height}" role="img" aria-label="Slepá mapa světa. ${interactive ? 'Klikni na stát.' : 'V tomto kroku vybírej název státu ze seznamu.'}">
-    ${mapFeatures.map(feature => `<path class="country ${active.has(feature.code) ? 'is-in-group' : ''}" data-code="${feature.code}" d="${feature.path}" tabindex="${interactive ? '0' : '-1'}"></path>`).join('')}
+    ${mapFeatures.map(feature => `<path class="country ${active.has(feature.code) ? 'is-in-group' : ''} ${session.seenMap.has(feature.code) ? 'is-known' : ''}" data-code="${feature.code}" d="${feature.path}" tabindex="${interactive && !session.seenMap.has(feature.code) ? '0' : '-1'}"></path>`).join('')}
   </svg>`;
 }
 
@@ -150,15 +157,19 @@ function renderQuiz() {
   const isName = session.phase === 'name';
   const group = GROUPS[session.group];
   const states = [...group.states].sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+  const nameScore = scorePercent(session.nameFirst, session.index + (isName ? 0 : 1));
+  const mapScore = scorePercent(session.mapFirst, session.index);
   app.innerHTML = `
     <section class="quiz">
       <header class="quiz-header">
+        <div class="header-flag"><img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" /><span class="revealed-name"></span></div>
         <p class="progress-copy"><strong>${group.label}</strong> · ${session.index + 1} / ${session.questions.length}</p>
         <span class="phase">Krok ${isName ? '1' : '2'} ze 2 · ${isName ? 'Název státu' : 'Poloha na mapě'}</span>
+        <p class="score-copy">Vlajka <strong>${nameScore}</strong> · Mapa <strong>${mapScore}</strong></p>
         <button class="exit-button" id="exit-session">Změnit blok</button>
       </header>
       <div class="progress-track" aria-label="Průběh tréninku"><span style="width:${progressPercent()}%"></span></div>
-      <div class="quiz-layout">
+      <div class="quiz-layout ${isName ? 'is-name-phase' : 'is-map-phase'}">
         <section class="map-panel" aria-label="Mapa světa">
           <p class="map-label">${isName ? 'Slepá mapa' : 'Klikni na správný stát'}</p>
           <div class="map-controls" aria-label="Ovládání mapy">
@@ -170,9 +181,10 @@ function renderQuiz() {
         </section>
         <aside class="answer-panel">
           <div class="flag-wrap"><img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" /></div>
-          <h1 class="task-title">${isName ? 'Který stát má tuto vlajku?' : 'Kde leží tento stát?'}</h1>
-          <p class="task-help">${isName ? 'Vyber název ze seznamu. Hned potom ho budeš hledat na mapě.' : `Na mapě vyber stát, který patří k této vlajce.${question.nameMistakes ? ` V prvním kroku to byl ${esc(question.name)}.` : ''}`}</p>
-          ${isName ? `<div class="answer-list">${states.map(state => `<button class="answer-choice" data-name-choice="${state.code}">${esc(state.name)}</button>`).join('')}</div>` : `<div class="map-instruction">Mapu můžeš přetáhnout myší nebo prstem a přiblížit kolečkem. Najeď na stát — zvýrazní se. Pak na něj klikni.</div>`}
+          <h1 class="task-title">${isName ? 'Který stát má tuto vlajku?' : `Najdi na mapě: ${esc(question.name)}`}</h1>
+          <p class="task-help">${isName ? 'Vyber jednu odpověď. Potom hned uvidíš správné řešení a přejdeš na mapu.' : 'Mapu přetáhneš prstem nebo myší; na počítači ji přiblížíš i kolečkem.'}</p>
+          <p class="revealed-name desktop-revealed"></p>
+          ${isName ? `<div class="answer-list">${states.map(state => `<button class="answer-choice ${session.seenNames.has(state.code) ? 'is-known' : ''}" data-name-choice="${state.code}" ${session.seenNames.has(state.code) ? 'disabled' : ''}>${esc(state.name)}</button>`).join('')}</div>` : `<div class="map-instruction">Hledáš stát <strong>${esc(question.name)}</strong>. Klikni na něj na mapě.</div>`}
           <p class="feedback" id="feedback"></p>
         </aside>
       </div>
@@ -254,59 +266,48 @@ function feedback(text, type) {
 }
 
 function answerName(code, button) {
-  if (session.locked || session.blockedNames.has(code)) return;
+  if (session.locked || session.seenNames.has(code)) return;
   const question = currentQuestion();
-  if (code === question.code) {
-    session.locked = true;
-    if (question.nameMistakes === 0) session.nameFirst += 1;
-    button.classList.add('is-correct');
+  const correct = code === question.code;
+  session.locked = true;
+  session.seenNames.add(question.code);
+  app.querySelectorAll('[data-name-choice]').forEach(choice => { choice.disabled = true; });
+  revealName(question.name);
+  button.classList.add(correct ? 'is-correct' : 'is-wrong');
+  if (correct) {
+    session.nameFirst += 1;
     feedback('Správně. Teď ho najdi na mapě.', 'good');
-    setTimeout(() => { session.phase = 'map'; session.blockedMap = new Set(); session.locked = false; renderQuiz(); }, 680);
-    return;
-  }
-  question.nameMistakes += 1;
-  session.nameErrors += 1;
-  button.classList.add('is-wrong');
-  feedback('Zkus to znovu.', 'bad');
-  if (session.difficulty === 'easy') {
-    session.blockedNames.add(code);
-    button.disabled = true;
   } else {
-    session.locked = true;
-    setTimeout(() => { button.classList.remove('is-wrong'); feedback('', ''); session.locked = false; }, 520);
+    session.nameErrors += 1;
+    feedback('Správná odpověď je uvedená nad seznamem. Teď ho najdi na mapě.', 'bad');
   }
+  setTimeout(() => { session.phase = 'map'; session.locked = false; renderQuiz(); }, 950);
 }
 
 function answerMap(code, path) {
-  if (session.locked || session.blockedMap.has(code)) return;
+  if (session.locked || session.seenMap.has(code)) return;
   const question = currentQuestion();
-  if (code === question.code) {
-    session.locked = true;
-    if (question.mapMistakes === 0) session.mapFirst += 1;
+  const correct = code === question.code;
+  session.locked = true;
+  session.seenMap.add(question.code);
+  if (correct) {
+    session.mapFirst += 1;
     path.classList.add('is-correct');
     feedback('Správně.', 'good');
-    setTimeout(nextQuestion, 690);
-    return;
-  }
-  question.mapMistakes += 1;
-  session.mapErrors += 1;
-  path.classList.add('is-wrong');
-  feedback('To není ono. Zkus jiný stát.', 'bad');
-  if (session.difficulty === 'easy') {
-    session.blockedMap.add(code);
-    path.classList.add('is-blocked');
   } else {
-    session.locked = true;
-    setTimeout(() => { path.classList.remove('is-wrong'); feedback('', ''); session.locked = false; }, 520);
+    session.mapErrors += 1;
+    path.classList.add('is-wrong');
+    const correctPath = app.querySelector(`.country[data-code="${question.code}"]`);
+    correctPath?.classList.add('is-correct');
+    feedback(`Správně je ${question.name}.`, 'bad');
   }
+  setTimeout(nextQuestion, 1050);
 }
 
 function nextQuestion() {
   session.index += 1;
   if (session.index >= session.questions.length) { renderSummary(); return; }
   session.phase = 'name';
-  session.blockedNames = new Set();
-  session.blockedMap = new Set();
   session.locked = false;
   renderQuiz();
 }
@@ -320,13 +321,12 @@ function renderSummary() {
     <section class="summary">
       <p class="eyebrow">Trénink dokončen</p>
       <h1>${pct >= 85 ? 'Výborně.' : pct >= 65 ? 'Dobrá práce.' : 'Základ je položen.'}</h1>
-      <p>Prošel/a jsi všech ${total} států ve skupině ${session.group}. Nejdůležitější je podíl odpovědí správně na první pokus — právě ten ukazuje skutečné vybavení, ne postupné vylučování možností.</p>
+      <p>Prošel/a jsi všech ${total} států ve skupině ${session.group}. Každý krok měl jeden zaznamenaný pokus, takže výsledek ukazuje skutečné vybavení.</p>
       <div class="score-grid">
-        <div class="score"><span>Vlajka → stát</span><strong>${session.nameFirst} / ${total}</strong><span>${session.nameErrors} chybných kliknutí</span></div>
-        <div class="score"><span>Vlajka → poloha</span><strong>${session.mapFirst} / ${total}</strong><span>${session.mapErrors} chybných kliknutí</span></div>
-        <div class="score"><span>Celkem na první pokus</span><strong>${pct} %</strong><span>${overallFirst} / ${overallTotal} kroků</span></div>
+        <div class="score"><span>Vlajka → stát</span><strong>${session.nameFirst} / ${total}</strong><span>${session.nameErrors} chybných odpovědí</span></div>
+        <div class="score"><span>Vlajka → poloha</span><strong>${session.mapFirst} / ${total}</strong><span>${session.mapErrors} chybných odpovědí</span></div>
+        <div class="score"><span>Celkem</span><strong>${pct} %</strong><span>${overallFirst} / ${overallTotal} kroků</span></div>
       </div>
-      <p class="summary-note">Na další pokus zvol těžkou obtížnost. Pokud se ti konkrétní státy pletou opakovaně, právě tam se vyplatí přidat mapovou pomůcku nebo sousedy.</p>
       <button class="start-button" id="again">Trénovat znovu</button>
       <button class="secondary-button" id="choose-other">Vybrat jiný blok</button>
     </section>`;
