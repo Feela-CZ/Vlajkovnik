@@ -83,7 +83,9 @@ function startSession() {
     blockedNames: new Set(),
     blockedMap: new Set(),
     locked: false,
-    mapView: initialMapView(selectedGroup)
+    mapView: initialMapView(selectedGroup),
+    mapDrag: null,
+    ignoreNextMapClick: false
   };
   renderQuiz();
 }
@@ -170,7 +172,7 @@ function renderQuiz() {
           <div class="flag-wrap"><img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" /></div>
           <h1 class="task-title">${isName ? 'Který stát má tuto vlajku?' : 'Kde leží tento stát?'}</h1>
           <p class="task-help">${isName ? 'Vyber název ze seznamu. Hned potom ho budeš hledat na mapě.' : `Na mapě vyber stát, který patří k této vlajce.${question.nameMistakes ? ` V prvním kroku to byl ${esc(question.name)}.` : ''}`}</p>
-          ${isName ? `<div class="answer-list">${states.map(state => `<button class="answer-choice" data-name-choice="${state.code}">${esc(state.name)}</button>`).join('')}</div>` : `<div class="map-instruction">Najeď na stát — zvýrazní se. Pak na něj klikni.</div>`}
+          ${isName ? `<div class="answer-list">${states.map(state => `<button class="answer-choice" data-name-choice="${state.code}">${esc(state.name)}</button>`).join('')}</div>` : `<div class="map-instruction">Mapu můžeš přetáhnout myší nebo prstem a přiblížit kolečkem. Najeď na stát — zvýrazní se. Pak na něj klikni.</div>`}
           <p class="feedback" id="feedback"></p>
         </aside>
       </div>
@@ -191,11 +193,55 @@ function renderQuiz() {
     const y = view.y + ((event.clientY - rect.top) / rect.height) * view.height;
     zoomMapAt(x, y, event.deltaY < 0 ? .78 : 1 / .78);
   }, { passive: false });
+  svg.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    session.mapDrag = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startView: { ...session.mapView },
+      moved: false
+    };
+    svg.setPointerCapture?.(event.pointerId);
+    svg.classList.add('is-dragging');
+  });
+  svg.addEventListener('pointermove', event => {
+    const drag = session.mapDrag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const rect = svg.getBoundingClientRect();
+    const offsetX = event.clientX - drag.startX;
+    const offsetY = event.clientY - drag.startY;
+    if (Math.abs(offsetX) > 4 || Math.abs(offsetY) > 4) drag.moved = true;
+    if (!drag.moved) return;
+    session.mapView = clampMapView({
+      ...drag.startView,
+      x: drag.startView.x - (offsetX / rect.width) * drag.startView.width,
+      y: drag.startView.y - (offsetY / rect.height) * drag.startView.height
+    });
+    applyMapView();
+  });
+  const stopMapDrag = event => {
+    const drag = session.mapDrag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (drag.moved) {
+      session.ignoreNextMapClick = true;
+      window.setTimeout(() => { session.ignoreNextMapClick = false; }, 0);
+    }
+    session.mapDrag = null;
+    svg.classList.remove('is-dragging');
+    if (svg.hasPointerCapture?.(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+  };
+  svg.addEventListener('pointerup', stopMapDrag);
+  svg.addEventListener('pointercancel', stopMapDrag);
   if (isName) {
     app.querySelectorAll('[data-name-choice]').forEach(button => button.addEventListener('click', () => answerName(button.dataset.nameChoice, button)));
   } else {
     app.querySelectorAll('.country').forEach(path => {
-      path.addEventListener('click', () => answerMap(path.dataset.code, path));
+      path.addEventListener('click', () => {
+        if (session.ignoreNextMapClick) return;
+        answerMap(path.dataset.code, path);
+      });
       path.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); answerMap(path.dataset.code, path); } });
     });
   }
