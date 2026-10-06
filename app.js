@@ -82,7 +82,8 @@ function startSession() {
     mapErrors: 0,
     blockedNames: new Set(),
     blockedMap: new Set(),
-    locked: false
+    locked: false,
+    mapView: initialMapView(selectedGroup)
   };
   renderQuiz();
 }
@@ -94,6 +95,39 @@ function progressPercent() {
   return ((session.index + half) / session.questions.length) * 100;
 }
 
+function initialMapView(group) {
+  if (group === 'A') return { x: 150, y: 95, width: 700, height: 364 };
+  return { x: 0, y: 0, width: 1000, height: 520 };
+}
+
+function clampMapView(view) {
+  const width = Math.max(120, Math.min(1000, view.width));
+  const height = width * .52;
+  return {
+    width,
+    height,
+    x: Math.max(0, Math.min(1000 - width, view.x)),
+    y: Math.max(0, Math.min(520 - height, view.y))
+  };
+}
+
+function zoomMapAt(x, y, factor) {
+  const previous = session.mapView;
+  const width = Math.max(120, Math.min(1000, previous.width * factor));
+  const height = width * .52;
+  const rx = (x - previous.x) / previous.width;
+  const ry = (y - previous.y) / previous.height;
+  session.mapView = clampMapView({ width, x: x - rx * width, y: y - ry * height });
+  applyMapView();
+}
+
+function applyMapView() {
+  const svg = app.querySelector('.world-map');
+  if (!svg) return;
+  const view = session.mapView;
+  svg.setAttribute('viewBox', `${view.x} ${view.y} ${view.width} ${view.height}`);
+}
+
 function mapPath(coords) {
   const point = ([lon, lat]) => `${((lon + 180) * 1000 / 360).toFixed(2)},${((90 - lat) * 520 / 180).toFixed(2)}`;
   const polygon = rings => rings.map(ring => `M${ring.map(point).join('L')}Z`).join('');
@@ -102,8 +136,10 @@ function mapPath(coords) {
 
 function renderMap() {
   const interactive = session.phase === 'map';
-  return `<svg class="world-map ${interactive ? 'map-select' : ''}" viewBox="0 0 1000 520" role="img" aria-label="Slepá mapa světa. ${interactive ? 'Klikni na stát.' : 'V tomto kroku vybírej název státu ze seznamu.'}">
-    ${mapFeatures.map(feature => `<path class="country" data-code="${feature.code}" d="${feature.path}" tabindex="${interactive ? '0' : '-1'}"></path>`).join('')}
+  const active = new Set(GROUPS[session.group].states.map(state => state.code));
+  const view = session.mapView;
+  return `<svg class="world-map ${interactive ? 'map-select' : ''}" viewBox="${view.x} ${view.y} ${view.width} ${view.height}" role="img" aria-label="Slepá mapa světa. ${interactive ? 'Klikni na stát.' : 'V tomto kroku vybírej název státu ze seznamu.'}">
+    ${mapFeatures.map(feature => `<path class="country ${active.has(feature.code) ? 'is-in-group' : ''}" data-code="${feature.code}" d="${feature.path}" tabindex="${interactive ? '0' : '-1'}"></path>`).join('')}
   </svg>`;
 }
 
@@ -123,10 +159,15 @@ function renderQuiz() {
       <div class="quiz-layout">
         <section class="map-panel" aria-label="Mapa světa">
           <p class="map-label">${isName ? 'Slepá mapa' : 'Klikni na správný stát'}</p>
+          <div class="map-controls" aria-label="Ovládání mapy">
+            <button class="map-control" type="button" data-map-action="zoom-in" aria-label="Přiblížit mapu">+</button>
+            <button class="map-control" type="button" data-map-action="zoom-out" aria-label="Oddálit mapu">−</button>
+            <button class="map-control" type="button" data-map-action="reset" aria-label="Vrátit výchozí zobrazení">↺</button>
+          </div>
           ${renderMap()}
         </section>
         <aside class="answer-panel">
-          <div class="flag-wrap"><img src="https://flagcdn.com/w320/${question.flag}.png" alt="Vlajka k určení" /></div>
+          <div class="flag-wrap"><img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" /></div>
           <h1 class="task-title">${isName ? 'Který stát má tuto vlajku?' : 'Kde leží tento stát?'}</h1>
           <p class="task-help">${isName ? 'Vyber název ze seznamu. Hned potom ho budeš hledat na mapě.' : `Na mapě vyber stát, který patří k této vlajce.${question.nameMistakes ? ` V prvním kroku to byl ${esc(question.name)}.` : ''}`}</p>
           ${isName ? `<div class="answer-list">${states.map(state => `<button class="answer-choice" data-name-choice="${state.code}">${esc(state.name)}</button>`).join('')}</div>` : `<div class="map-instruction">Najeď na stát — zvýrazní se. Pak na něj klikni.</div>`}
@@ -135,6 +176,21 @@ function renderQuiz() {
       </div>
     </section>`;
   app.querySelector('#exit-session').addEventListener('click', () => { session = null; renderSetup(); });
+  app.querySelectorAll('[data-map-action]').forEach(button => button.addEventListener('click', () => {
+    const action = button.dataset.mapAction;
+    if (action === 'reset') { session.mapView = initialMapView(session.group); applyMapView(); return; }
+    const view = session.mapView;
+    zoomMapAt(view.x + view.width / 2, view.y + view.height / 2, action === 'zoom-in' ? .68 : 1 / .68);
+  }));
+  const svg = app.querySelector('.world-map');
+  svg.addEventListener('wheel', event => {
+    event.preventDefault();
+    const rect = svg.getBoundingClientRect();
+    const view = session.mapView;
+    const x = view.x + ((event.clientX - rect.left) / rect.width) * view.width;
+    const y = view.y + ((event.clientY - rect.top) / rect.height) * view.height;
+    zoomMapAt(x, y, event.deltaY < 0 ? .78 : 1 / .78);
+  }, { passive: false });
   if (isName) {
     app.querySelectorAll('[data-name-choice]').forEach(button => button.addEventListener('click', () => answerName(button.dataset.nameChoice, button)));
   } else {

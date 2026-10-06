@@ -59,8 +59,12 @@ h1 { max-width: 760px; margin: 0; font-size: clamp(2.35rem, 5vw, 4.8rem); line-h
 .map-panel, .answer-panel { min-height: 590px; border: 1px solid rgba(169,192,189,.23); border-radius: 18px; background: rgba(10,48,58,.82); overflow: hidden; }
 .map-panel { position: relative; display: grid; place-items: center; }
 .map-label { position: absolute; top: 14px; left: 16px; z-index: 2; margin: 0; color: #d4e2e0; font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
+.map-controls { position: absolute; z-index: 3; top: 10px; right: 11px; display: flex; gap: 5px; }
+.map-control { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; color: var(--ink); font-size: 1.1rem; font-weight: 760; background: rgba(7,31,40,.84); border: 1px solid rgba(195,212,211,.45); border-radius: 8px; cursor: pointer; }
+.map-control:hover { color: #1c3940; background: var(--gold); border-color: var(--gold); }
 .world-map { width: 100%; height: 100%; min-height: 590px; background: linear-gradient(180deg, #164a56, #0d3945); }
 .country { fill: var(--land); stroke: #0d3945; stroke-width: .55; vector-effect: non-scaling-stroke; transition: fill .12s ease, opacity .12s ease; }
+.world-map .country.is-in-group { fill: #78abb2; }
 .map-select .country { cursor: pointer; }
 .world-map .country:hover, .world-map .country.is-hovered { fill: var(--hover); }
 .country.is-wrong, .world-map .country.is-wrong:hover { fill: var(--red) !important; }
@@ -78,6 +82,7 @@ h1 { max-width: 760px; margin: 0; font-size: clamp(2.35rem, 5vw, 4.8rem); line-h
 .answer-choice.is-correct { color: #092d25; background: var(--green); border-color: var(--green); }
 .answer-choice:disabled { cursor: not-allowed; opacity: .82; }
 .map-instruction { display: grid; place-items: center; flex: 1; color: var(--muted); text-align: center; line-height: 1.45; }
+.map-instruction strong { display: block; color: var(--ink); }
 .feedback { min-height: 22px; margin-top: auto; padding-top: 17px; font-size: .89rem; font-weight: 650; }
 .feedback.good { color: var(--green); }
 .feedback.bad { color: #ffb1b1; }
