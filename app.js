@@ -104,6 +104,15 @@ function revealName(name) {
   });
 }
 
+function revealContinue(label, action) {
+  const result = app.querySelector('#step-result');
+  const button = app.querySelector('#continue-step');
+  result.hidden = false;
+  button.textContent = label;
+  button.addEventListener('click', action, { once: true });
+  result.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
 function initialMapView(group) {
   if (group === 'A') return { x: 140, y: 115, width: 720, height: 300 };
   return { x: 0, y: 60, width: 1000, height: 400 };
@@ -194,11 +203,14 @@ function renderQuiz() {
         </section>
         <aside class="answer-panel">
           <div class="flag-wrap"><img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" /></div>
-          <h1 class="task-title">${isName ? 'Který stát má tuto vlajku?' : `Najdi na mapě: ${esc(question.name)}`}</h1>
-          <p class="task-help">${isName ? 'Vyber jednu odpověď. Potom hned uvidíš správné řešení a přejdeš na mapu.' : 'Mapu přetáhneš prstem nebo myší; na počítači ji přiblížíš i kolečkem.'}</p>
+          <h1 class="task-title">${isName ? 'Který stát má tuto vlajku?' : esc(question.name)}</h1>
+          <p class="task-help">${isName ? 'Vyber jednu odpověď. Správné řešení zůstane zobrazené, dokud nepokračuješ dál.' : 'Klikni na stát na mapě.'}</p>
           <p class="revealed-name desktop-revealed"></p>
-          ${isName ? `<div class="answer-list">${states.map(state => `<button class="answer-choice ${session.seenNames.has(state.code) ? 'is-known' : ''}" data-name-choice="${state.code}" ${session.seenNames.has(state.code) ? 'disabled' : ''}>${esc(state.name)}</button>`).join('')}</div>` : `<div class="map-instruction">Hledáš stát <strong>${esc(question.name)}</strong>. Klikni na něj na mapě.</div>`}
-          <p class="feedback" id="feedback"></p>
+          <div class="step-result" id="step-result" hidden>
+            <p class="feedback" id="feedback"></p>
+            <button class="continue-button" id="continue-step" type="button"></button>
+          </div>
+          ${isName ? `<div class="answer-list">${states.map(state => `<button class="answer-choice ${session.seenNames.has(state.code) ? 'is-known' : ''}" data-name-choice="${state.code}" ${session.seenNames.has(state.code) ? 'disabled' : ''}>${esc(state.name)}</button>`).join('')}</div>` : ''}
         </aside>
       </div>
     </section>`;
@@ -217,7 +229,6 @@ function renderQuiz() {
   }, { passive: false });
   svg.addEventListener('pointerdown', event => {
     if (event.button !== 0) return;
-    event.preventDefault();
     session.mapDrag = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -225,16 +236,19 @@ function renderQuiz() {
       startView: { ...session.mapView },
       moved: false
     };
-    svg.setPointerCapture?.(event.pointerId);
-    svg.classList.add('is-dragging');
   });
   svg.addEventListener('pointermove', event => {
     const drag = session.mapDrag;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const offsetX = event.clientX - drag.startX;
     const offsetY = event.clientY - drag.startY;
-    if (Math.abs(offsetX) > 4 || Math.abs(offsetY) > 4) drag.moved = true;
+    if (Math.abs(offsetX) > 7 || Math.abs(offsetY) > 7) {
+      drag.moved = true;
+      svg.setPointerCapture?.(event.pointerId);
+      svg.classList.add('is-dragging');
+    }
     if (!drag.moved) return;
+    event.preventDefault();
     const { scale } = mapPointFromPointer(svg, event, drag.startView);
     session.mapView = clampMapView({
       ...drag.startView,
@@ -252,7 +266,7 @@ function renderQuiz() {
     }
     session.mapDrag = null;
     svg.classList.remove('is-dragging');
-    if (svg.hasPointerCapture?.(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+    if (drag.moved && svg.hasPointerCapture?.(event.pointerId)) svg.releasePointerCapture(event.pointerId);
   };
   svg.addEventListener('pointerup', stopMapDrag);
   svg.addEventListener('pointercancel', stopMapDrag);
@@ -291,7 +305,7 @@ function answerName(code, button) {
     session.nameErrors += 1;
     feedback('Správná odpověď je uvedená nad seznamem. Teď ho najdi na mapě.', 'bad');
   }
-  setTimeout(() => { session.phase = 'map'; session.locked = false; renderQuiz(); }, 950);
+  revealContinue('Pokračovat na mapu', () => { session.phase = 'map'; session.locked = false; renderQuiz(); });
 }
 
 function answerMap(code, path) {
@@ -311,7 +325,7 @@ function answerMap(code, path) {
     correctPath?.classList.add('is-correct');
     feedback(`Správně je ${question.name}.`, 'bad');
   }
-  setTimeout(nextQuestion, 1050);
+  revealContinue(session.index + 1 === session.questions.length ? 'Zobrazit výsledek' : 'Další vlajka', nextQuestion);
 }
 
 function nextQuestion() {
