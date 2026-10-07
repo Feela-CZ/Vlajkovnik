@@ -25,6 +25,7 @@ const GROUPS = {
 const app = document.querySelector('#app');
 let mapFeatures = [];
 let selectedGroup = 'C';
+let selectedDifficulty = 'easy';
 let session = null;
 
 const asStates = entries => entries.map(([code, name]) => ({ code, name, flag: code.toLowerCase() }));
@@ -54,14 +55,16 @@ function renderSetup() {
             ${Object.entries(GROUPS).map(([id, group]) => `<button class="group-option" data-group="${id}" aria-pressed="${id === selectedGroup}"><b class="group-letter">${id}</b><span><strong>${group.label} · ${group.states.length} států</strong>${group.description}</span></button>`).join('')}
           </div>
         </div>
-        <div class="setup-panel session-rules">
-          <h2>Jak funguje test</h2>
-          <p>Každý stát má jeden pokus na název a jeden na polohu. Po odpovědi vždy uvidíš správné řešení a už zodpovězené státy se v dalších kolech vyřadí.</p>
+        <div class="setup-panel">
+          <h2>Obtížnost</h2>
+          <button class="difficulty-option" data-difficulty="easy" aria-pressed="${selectedDifficulty === 'easy'}"><i class="difficulty-mark"></i><span><strong>Snadná</strong>Už vyřešené státy se zašednou a v dalších kolech je nelze vybrat.</span></button>
+          <button class="difficulty-option" data-difficulty="hard" aria-pressed="${selectedDifficulty === 'hard'}"><i class="difficulty-mark"></i><span><strong>Těžká</strong>Všechny státy zůstávají aktivní. Musíš je odfiltrovat v hlavě.</span></button>
           <button class="start-button" id="start-session">Spustit trénink</button>
         </div>
       </div>
     </section>`;
   app.querySelectorAll('[data-group]').forEach(button => button.addEventListener('click', () => { selectedGroup = button.dataset.group; renderSetup(); }));
+  app.querySelectorAll('[data-difficulty]').forEach(button => button.addEventListener('click', () => { selectedDifficulty = button.dataset.difficulty; renderSetup(); }));
   app.querySelector('#start-session').addEventListener('click', startSession);
 }
 
@@ -69,6 +72,7 @@ function startSession() {
   const states = GROUPS[selectedGroup].states;
   session = {
     group: selectedGroup,
+    difficulty: selectedDifficulty,
     questions: shuffle(states).map(state => ({ ...state })),
     index: 0,
     phase: 'name',
@@ -170,7 +174,7 @@ function renderMap() {
   const active = new Set(GROUPS[session.group].states.map(state => state.code));
   const view = session.mapView;
   return `<svg class="world-map ${interactive ? 'map-select' : ''}" viewBox="${view.x} ${view.y} ${view.width} ${view.height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Slepá mapa světa. ${interactive ? 'Klikni na stát.' : 'V tomto kroku vybírej název státu ze seznamu.'}">
-    ${mapFeatures.map(feature => `<path class="country ${active.has(feature.code) ? 'is-in-group' : ''} ${session.seenMap.has(feature.code) ? 'is-known' : ''}" data-code="${feature.code}" d="${feature.path}" tabindex="-1"></path>`).join('')}
+    ${mapFeatures.map(feature => `<path class="country ${active.has(feature.code) ? 'is-in-group' : ''} ${session.difficulty === 'easy' && session.seenMap.has(feature.code) ? 'is-known' : ''}" data-code="${feature.code}" d="${feature.path}" tabindex="-1"></path>`).join('')}
   </svg>`;
 }
 
@@ -210,7 +214,10 @@ function renderQuiz() {
             <p class="feedback" id="feedback"></p>
             <button class="continue-button" id="continue-step" type="button"></button>
           </div>
-          ${isName ? `<div class="answer-list">${states.map(state => `<button class="answer-choice ${session.seenNames.has(state.code) ? 'is-known' : ''}" data-name-choice="${state.code}" ${session.seenNames.has(state.code) ? 'disabled' : ''}>${esc(state.name)}</button>`).join('')}</div>` : ''}
+          ${isName ? `<div class="answer-list">${states.map(state => {
+            const known = session.difficulty === 'easy' && session.seenNames.has(state.code);
+            return `<button class="answer-choice ${known ? 'is-known' : ''}" data-name-choice="${state.code}" ${known ? 'disabled' : ''}>${esc(state.name)}</button>`;
+          }).join('')}</div>` : ''}
         </aside>
       </div>
     </section>`;
@@ -289,7 +296,7 @@ function feedback(text, type) {
 }
 
 function answerName(code, button) {
-  if (session.locked || session.seenNames.has(code)) return;
+  if (session.locked || (session.difficulty === 'easy' && session.seenNames.has(code))) return;
   const question = currentQuestion();
   const correct = code === question.code;
   session.locked = true;
@@ -308,7 +315,7 @@ function answerName(code, button) {
 }
 
 function answerMap(code, path) {
-  if (session.locked || session.seenMap.has(code)) return;
+  if (session.locked || (session.difficulty === 'easy' && session.seenMap.has(code))) return;
   const question = currentQuestion();
   const correct = code === question.code;
   session.locked = true;
