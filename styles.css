@@ -145,7 +145,7 @@ body.flag-modal-open { overflow: hidden; }
   .exit-button { grid-area: exit; width: auto; height: auto; margin-right: 4px; padding: 7px 9px; color: var(--muted); font-size: .72rem; line-height: 1; border: 1px solid rgba(169,192,189,.3); border-radius: 8px; }
   .progress-track { margin-bottom: 10px; }
   .quiz-layout.is-name-phase .map-panel { display: none; }
-  .quiz-layout.is-name-phase .answer-panel { min-height: calc(100dvh - 242px); }
+  .quiz-layout.is-name-phase .answer-panel { height: calc(100dvh - 242px); min-height: 0; }
   .quiz-layout.is-map-phase { grid-template-columns: 1fr; }
   .quiz-layout.is-map-phase .answer-panel { display: none; }
   .map-controls { display: none; }
