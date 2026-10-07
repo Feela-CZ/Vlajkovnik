@@ -72,6 +72,7 @@ const shuffle = values => {
 const esc = value => value.replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
 
 function renderSetup() {
+  app.closest('.app-shell')?.classList.remove('is-training');
   app.innerHTML = `
     <section class="setup">
       <p class="eyebrow">Trénink zeměpisné paměti</p>
@@ -219,6 +220,7 @@ function renderMap() {
 }
 
 function renderQuiz() {
+  app.closest('.app-shell')?.classList.add('is-training');
   const question = currentQuestion();
   const isName = session.phase === 'name';
   const group = GROUPS[session.group];
@@ -447,6 +449,7 @@ function nextQuestion() {
 }
 
 function renderSummary() {
+  app.closest('.app-shell')?.classList.remove('is-training');
   const total = session.questions.length;
   const overallFirst = session.nameFirst + session.mapFirst;
   const overallTotal = total * 2;
