@@ -145,6 +145,9 @@ body.flag-modal-open { overflow: hidden; }
   .progress-track { margin-bottom: 10px; }
   .quiz-layout.is-name-phase .map-panel { display: none; }
   .quiz-layout.is-name-phase .answer-panel { min-height: 0; }
+  .quiz-layout.is-map-phase { grid-template-columns: 1fr; }
+  .quiz-layout.is-map-phase .answer-panel { display: none; }
+  .map-controls { display: none; }
   .flag-wrap { display: none; }
   .task-title { font-size: 1.08rem; }
   .task-help { min-height: 0; margin-bottom: 12px; font-size: .83rem; }

@@ -112,6 +112,8 @@ function startSession() {
     locked: false,
     mapView: initialMapView(selectedGroup),
     mapDrag: null,
+    mapPointers: new Map(),
+    mapPinch: null,
     ignoreNextMapClick: false
   };
   renderQuiz();
@@ -170,16 +172,20 @@ function zoomMapAt(x, y, factor) {
   applyMapView();
 }
 
-function mapPointFromPointer(svg, event, view = session.mapView) {
+function mapPointFromClient(svg, clientX, clientY, view = session.mapView) {
   const rect = svg.getBoundingClientRect();
   const scale = Math.min(rect.width / view.width, rect.height / view.height);
   const renderedWidth = view.width * scale;
   const renderedHeight = view.height * scale;
   return {
-    x: view.x + (event.clientX - rect.left - (rect.width - renderedWidth) / 2) / scale,
-    y: view.y + (event.clientY - rect.top - (rect.height - renderedHeight) / 2) / scale,
+    x: view.x + (clientX - rect.left - (rect.width - renderedWidth) / 2) / scale,
+    y: view.y + (clientY - rect.top - (rect.height - renderedHeight) / 2) / scale,
     scale
   };
+}
+
+function mapPointFromPointer(svg, event, view = session.mapView) {
+  return mapPointFromClient(svg, event.clientX, event.clientY, view);
 }
 
 function applyMapView() {
@@ -216,7 +222,7 @@ function renderQuiz() {
       <header class="quiz-header">
         <button class="header-flag" id="open-flag" type="button" aria-label="Zvětšit vlajku na celou obrazovku">
           <img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" />
-          <span class="revealed-name"></span>
+          <span class="revealed-name ${isName ? '' : 'is-visible'}">${isName ? '' : esc(question.name)}</span>
         </button>
         <p class="progress-copy"><strong><span class="group-name">${group.label} · </span>${session.index + 1} / ${session.questions.length}</strong></p>
         <span class="phase">Krok ${isName ? '1' : '2'} ze 2 · ${isName ? 'Název státu' : 'Poloha na mapě'}</span>
@@ -272,7 +278,32 @@ function renderQuiz() {
     const point = mapPointFromPointer(svg, event);
     zoomMapAt(point.x, point.y, event.deltaY < 0 ? .78 : 1 / .78);
   }, { passive: false });
+  const beginMapPinch = () => {
+    const [first, second] = [...session.mapPointers.values()];
+    if (!first || !second) return;
+    const startView = { ...session.mapView };
+    const centerX = (first.x + second.x) / 2;
+    const centerY = (first.y + second.y) / 2;
+    const anchor = mapPointFromClient(svg, centerX, centerY, startView);
+    session.mapDrag = null;
+    session.mapPinch = {
+      startView,
+      startDistance: Math.hypot(second.x - first.x, second.y - first.y),
+      anchor,
+      anchorRatioX: (anchor.x - startView.x) / startView.width,
+      anchorRatioY: (anchor.y - startView.y) / startView.height
+    };
+  };
   svg.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'touch') {
+      session.mapPointers.set(event.pointerId, { id: event.pointerId, x: event.clientX, y: event.clientY });
+      if (session.mapPointers.size >= 2) {
+        svg.setPointerCapture?.(event.pointerId);
+        beginMapPinch();
+        event.preventDefault();
+        return;
+      }
+    }
     if (event.button !== 0) return;
     session.mapDrag = {
       pointerId: event.pointerId,
@@ -283,6 +314,26 @@ function renderQuiz() {
     };
   });
   svg.addEventListener('pointermove', event => {
+    if (event.pointerType === 'touch' && session.mapPointers.has(event.pointerId)) {
+      session.mapPointers.set(event.pointerId, { id: event.pointerId, x: event.clientX, y: event.clientY });
+      const pinch = session.mapPinch;
+      if (pinch && session.mapPointers.size >= 2) {
+        const [first, second] = [...session.mapPointers.values()];
+        const distance = Math.max(1, Math.hypot(second.x - first.x, second.y - first.y));
+        const width = Math.max(120, Math.min(1000, pinch.startView.width * pinch.startDistance / distance));
+        const height = width * (pinch.startView.height / pinch.startView.width);
+        session.mapView = clampMapView({
+          width,
+          height,
+          x: pinch.anchor.x - pinch.anchorRatioX * width,
+          y: pinch.anchor.y - pinch.anchorRatioY * height
+        });
+        svg.classList.add('is-dragging');
+        event.preventDefault();
+        applyMapView();
+        return;
+      }
+    }
     const drag = session.mapDrag;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const offsetX = event.clientX - drag.startX;
@@ -302,19 +353,37 @@ function renderQuiz() {
     });
     applyMapView();
   });
-  const stopMapDrag = event => {
+  const stopMapGesture = event => {
+    const wasPinching = event.pointerType === 'touch' && Boolean(session.mapPinch);
+    if (event.pointerType === 'touch') session.mapPointers.delete(event.pointerId);
     const drag = session.mapDrag;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    if (drag.moved) {
+    if (drag && drag.pointerId === event.pointerId) {
+      if (drag.moved) {
+        session.ignoreNextMapClick = true;
+        window.setTimeout(() => { session.ignoreNextMapClick = false; }, 0);
+      }
+      session.mapDrag = null;
+    }
+    if (wasPinching) {
       session.ignoreNextMapClick = true;
       window.setTimeout(() => { session.ignoreNextMapClick = false; }, 0);
+      session.mapPinch = null;
+      const [remaining] = [...session.mapPointers.values()];
+      if (remaining) {
+        session.mapDrag = {
+          pointerId: remaining.id,
+          startX: remaining.x,
+          startY: remaining.y,
+          startView: { ...session.mapView },
+          moved: false
+        };
+      }
     }
-    session.mapDrag = null;
     svg.classList.remove('is-dragging');
-    if (drag.moved && svg.hasPointerCapture?.(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+    if (svg.hasPointerCapture?.(event.pointerId)) svg.releasePointerCapture(event.pointerId);
   };
-  svg.addEventListener('pointerup', stopMapDrag);
-  svg.addEventListener('pointercancel', stopMapDrag);
+  svg.addEventListener('pointerup', stopMapGesture);
+  svg.addEventListener('pointercancel', stopMapGesture);
   if (isName) {
     app.querySelectorAll('[data-name-choice]').forEach(button => button.addEventListener('click', () => answerName(button.dataset.nameChoice, button)));
   } else {
