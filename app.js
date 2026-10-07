@@ -210,6 +210,38 @@ function mapPath(coords) {
   return coords.map(polygon).join('');
 }
 
+function mapBounds(coords) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  coords.forEach(polygon => polygon.forEach(ring => ring.forEach(([lon, lat]) => {
+    const x = (lon + 180) * 1000 / 360;
+    const y = (90 - lat) * 520 / 180;
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  })));
+  return { minX, maxX, minY, maxY };
+}
+
+function focusMapOnState(code) {
+  const feature = mapFeatures.find(item => item.code === code);
+  if (!feature?.bounds) return;
+  const { minX, maxX, minY, maxY } = feature.bounds;
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const width = Math.max(28, (maxX - minX) * 3, (maxY - minY) * 3 / .45);
+  session.mapView = clampMapView({
+    width,
+    height: width * .45,
+    x: centerX - width / 2,
+    y: centerY - width * .45 / 2
+  });
+  applyMapView();
+}
+
 function renderMap() {
   const interactive = session.phase === 'map';
   const active = new Set(GROUPS[session.group].states.map(state => state.code));
@@ -248,6 +280,7 @@ function renderQuiz() {
             <button class="map-control" type="button" data-map-action="zoom-out" aria-label="Oddálit mapu">−</button>
             <button class="map-control" type="button" data-map-action="reset" aria-label="Vrátit výchozí zobrazení">↺</button>
           </div>
+          ${isName ? '' : '<button class="locate-correct" id="locate-correct" type="button" hidden>Ukázat stát</button>'}
           ${renderMap()}
           ${isName ? '' : continueMarkup('map-step-result')}
         </section>
@@ -281,6 +314,7 @@ function renderQuiz() {
     const view = session.mapView;
     zoomMapAt(view.x + view.width / 2, view.y + view.height / 2, action === 'zoom-in' ? .68 : 1 / .68);
   }));
+  app.querySelector('#locate-correct')?.addEventListener('click', () => focusMapOnState(currentQuestion().code));
   const svg = app.querySelector('.world-map');
   svg.addEventListener('wheel', event => {
     event.preventDefault();
@@ -436,6 +470,7 @@ function answerMap(code, path) {
     path.classList.add('is-wrong');
     const correctPath = app.querySelector(`.country[data-code="${question.code}"]`);
     correctPath?.classList.add('is-correct');
+    app.querySelector('#locate-correct').hidden = false;
   }
   revealContinue(session.index + 1 === session.questions.length ? 'Zobrazit výsledek' : 'Další vlajka', nextQuestion);
 }
@@ -479,7 +514,7 @@ async function loadMap() {
       .filter(feature => feature.geometry && mapCode(feature))
       .map(feature => {
         const coords = feature.geometry.type === 'MultiPolygon' ? feature.geometry.coordinates : [feature.geometry.coordinates];
-        return { code: mapCode(feature), path: mapPath(coords) };
+        return { code: mapCode(feature), path: mapPath(coords), bounds: mapBounds(coords) };
       });
     renderSetup();
   } catch (error) {
