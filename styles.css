@@ -99,6 +99,12 @@ h1 { max-width: 760px; margin: 0; font-size: clamp(2.35rem, 5vw, 4.8rem); line-h
 .feedback.bad { color: #ffb1b1; }
 .continue-button { width: 100%; min-height: 42px; padding: 10px 14px; color: #16343a; font-weight: 760; background: var(--gold); border: 0; border-radius: 8px; cursor: pointer; }
 .continue-button:hover { filter: brightness(1.07); }
+.flag-modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 28px; background: rgba(3,17,23,.94); }
+.flag-modal[hidden] { display: none; }
+.flag-modal img { width: min(92vw, 920px); max-height: 72dvh; object-fit: contain; filter: drop-shadow(0 16px 34px rgba(0,0,0,.45)); }
+.flag-modal p { position: absolute; bottom: 18px; margin: 0; color: var(--muted); font-size: .85rem; }
+.flag-modal-close { position: absolute; top: 16px; right: 16px; padding: 9px 12px; color: var(--ink); font-weight: 700; background: rgba(16,59,70,.85); border: 1px solid rgba(169,192,189,.35); border-radius: 8px; cursor: pointer; }
+body.flag-modal-open { overflow: hidden; }
 
 .quiz-layout.is-name-phase { grid-template-columns: minmax(0, 1fr); }
 .quiz-layout.is-name-phase .map-panel { display: none; }
@@ -126,15 +132,15 @@ h1 { max-width: 760px; margin: 0; font-size: clamp(2.35rem, 5vw, 4.8rem); line-h
   .setup { margin-top: 4vh; }
   .setup-panel, .answer-panel, .summary { padding: 16px; }
   .quiz { padding-top: 8px; }
-  .quiz-header { grid-template-columns: 62px minmax(0, 1fr) auto; gap: 10px; align-items: start; }
-  .header-flag { display: grid; gap: 5px; align-content: start; }
-  .header-flag img { width: 58px; height: 40px; object-fit: contain; border: 1px solid rgba(169,192,189,.28); border-radius: 5px; background: rgba(7,31,40,.4); }
-  .header-flag .revealed-name { width: 130px; margin: 0; font-size: .73rem; line-height: 1.2; }
-  .progress-copy { font-size: .86rem; line-height: 1.22; }
+  .quiz-header { position: sticky; top: 0; z-index: 10; grid-template-columns: 112px minmax(0, 1fr) auto; grid-template-areas: 'flag progress exit' 'flag score score'; gap: 5px 10px; align-items: start; padding: 8px 0; background: linear-gradient(180deg, var(--deep) 82%, rgba(7,31,40,0)); }
+  .header-flag { grid-area: flag; display: grid; gap: 5px; align-content: start; width: 112px; padding: 0; color: var(--ink); text-align: left; background: transparent; border: 0; cursor: pointer; }
+  .header-flag img { width: 112px; height: 78px; object-fit: contain; border: 1px solid rgba(169,192,189,.28); border-radius: 8px; background: rgba(7,31,40,.4); }
+  .header-flag .revealed-name { width: 112px; margin: 0; font-size: .73rem; line-height: 1.2; }
+  .progress-copy { grid-area: progress; margin-top: 3px; font-size: .95rem; line-height: 1.22; }
+  .group-name { display: none; }
   .phase { display: none; }
-  .score-copy { align-self: end; margin-top: 4px; font-size: .72rem; white-space: normal; line-height: 1.25; }
-  .exit-button { width: 30px; height: 30px; padding: 0; overflow: hidden; color: transparent; border: 1px solid rgba(169,192,189,.3); border-radius: 8px; position: relative; }
-  .exit-button::after { content: '×'; position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 1.35rem; line-height: 1; }
+  .score-copy { grid-area: score; align-self: start; margin: 0; font-size: .75rem; white-space: normal; line-height: 1.25; }
+  .exit-button { grid-area: exit; width: auto; height: auto; padding: 6px 8px; color: var(--muted); font-size: .72rem; line-height: 1; border: 1px solid rgba(169,192,189,.3); border-radius: 8px; }
   .progress-track { margin-bottom: 10px; }
   .quiz-layout.is-name-phase .map-panel { display: none; }
   .quiz-layout.is-name-phase .answer-panel { min-height: 0; }
@@ -144,7 +150,7 @@ h1 { max-width: 760px; margin: 0; font-size: clamp(2.35rem, 5vw, 4.8rem); line-h
   .desktop-revealed { display: none !important; }
   .world-map { min-height: 310px; }
   .map-control { width: 40px; height: 40px; }
-  .answer-list { grid-template-columns: 1fr; max-height: calc(100dvh - 210px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 3px; }
+  .answer-list { grid-template-columns: 1fr; max-height: calc(100dvh - 292px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 3px; }
   .answer-choice { min-height: 46px; padding: 10px 12px; }
   .score-grid { grid-template-columns: 1fr; }
 }

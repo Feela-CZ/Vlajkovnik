@@ -215,8 +215,11 @@ function renderQuiz() {
   app.innerHTML = `
     <section class="quiz">
       <header class="quiz-header">
-        <div class="header-flag"><img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" /><span class="revealed-name"></span></div>
-        <p class="progress-copy"><strong>${group.label}</strong> · ${session.index + 1} / ${session.questions.length}</p>
+        <button class="header-flag" id="open-flag" type="button" aria-label="Zvětšit vlajku na celou obrazovku">
+          <img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" />
+          <span class="revealed-name"></span>
+        </button>
+        <p class="progress-copy"><strong><span class="group-name">${group.label} · </span>${session.index + 1} / ${session.questions.length}</strong></p>
         <span class="phase">Krok ${isName ? '1' : '2'} ze 2 · ${isName ? 'Název státu' : 'Poloha na mapě'}</span>
         <p class="score-copy">Vlajka <strong>${nameScore}</strong> · Mapa <strong>${mapScore}</strong></p>
         <button class="exit-button" id="exit-session">Změnit blok</button>
@@ -247,8 +250,19 @@ function renderQuiz() {
           }).join('')}</div>` : ''}
         </aside>
       </div>
+      <div class="flag-modal" id="flag-modal" hidden role="dialog" aria-modal="true" aria-label="Zvětšená vlajka">
+        <button class="flag-modal-close" id="close-flag" type="button">Zavřít</button>
+        <img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" />
+        <p>Klepni mimo vlajku pro zavření.</p>
+      </div>
     </section>`;
+  window.scrollTo(0, 0);
   app.querySelector('#exit-session').addEventListener('click', () => { session = null; renderSetup(); });
+  const flagModal = app.querySelector('#flag-modal');
+  const closeFlagModal = () => { flagModal.hidden = true; document.body.classList.remove('flag-modal-open'); };
+  app.querySelector('#open-flag').addEventListener('click', () => { flagModal.hidden = false; document.body.classList.add('flag-modal-open'); });
+  app.querySelector('#close-flag').addEventListener('click', closeFlagModal);
+  flagModal.addEventListener('click', event => { if (event.target === flagModal) closeFlagModal(); });
   app.querySelectorAll('[data-map-action]').forEach(button => button.addEventListener('click', () => {
     const action = button.dataset.mapAction;
     if (action === 'reset') { session.mapView = initialMapView(session.group); applyMapView(); return; }
