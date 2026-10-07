@@ -28,6 +28,20 @@ let selectedGroup = 'C';
 let selectedDifficulty = 'easy';
 let session = null;
 
+// Natural Earth používá kód -99 pro státy bez běžného ISO kódu i pro malé
+// nestátní plochy (základny, útesy, sporná území). Ty druhé by na slepé mapě
+// byly zavádějící a zbytečně klikatelné, proto je vůbec nevykreslujeme.
+const MAP_CODE_OVERRIDES = {
+  France: 'FRA',
+  Norway: 'NOR',
+  Kosovo: 'XKX'
+};
+
+const mapCode = feature => {
+  const code = feature.properties['ISO3166-1-Alpha-3'];
+  return code === '-99' ? MAP_CODE_OVERRIDES[feature.properties.name] || null : code;
+};
+
 const asStates = entries => entries.map(([code, name]) => ({ code, name, flag: code.toLowerCase() }));
 Object.values(GROUPS).forEach(group => { group.states = asStates(group.states); });
 
@@ -369,10 +383,10 @@ async function loadMap() {
     const response = await fetch('data/countries.geojson');
     const data = await response.json();
     mapFeatures = data.features
-      .filter(feature => feature.geometry && feature.properties['ISO3166-1-Alpha-3'])
+      .filter(feature => feature.geometry && mapCode(feature))
       .map(feature => {
         const coords = feature.geometry.type === 'MultiPolygon' ? feature.geometry.coordinates : [feature.geometry.coordinates];
-        return { code: feature.properties['ISO3166-1-Alpha-3'], path: mapPath(coords) };
+        return { code: mapCode(feature), path: mapPath(coords) };
       });
     renderSetup();
   } catch (error) {
