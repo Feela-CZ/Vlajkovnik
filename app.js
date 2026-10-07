@@ -105,13 +105,14 @@ function revealName(name) {
 }
 
 function initialMapView(group) {
-  if (group === 'A') return { x: 150, y: 95, width: 700, height: 364 };
-  return { x: 0, y: 0, width: 1000, height: 520 };
+  if (group === 'A') return { x: 140, y: 115, width: 720, height: 300 };
+  return { x: 0, y: 60, width: 1000, height: 400 };
 }
 
 function clampMapView(view) {
   const width = Math.max(120, Math.min(1000, view.width));
-  const height = width * .52;
+  const ratio = Math.max(.25, Math.min(.52, (view.height ?? width * .52) / view.width));
+  const height = Math.max(80, Math.min(520, width * ratio));
   return {
     width,
     height,
@@ -123,11 +124,23 @@ function clampMapView(view) {
 function zoomMapAt(x, y, factor) {
   const previous = session.mapView;
   const width = Math.max(120, Math.min(1000, previous.width * factor));
-  const height = width * .52;
+  const height = width * (previous.height / previous.width);
   const rx = (x - previous.x) / previous.width;
   const ry = (y - previous.y) / previous.height;
   session.mapView = clampMapView({ width, x: x - rx * width, y: y - ry * height });
   applyMapView();
+}
+
+function mapPointFromPointer(svg, event, view = session.mapView) {
+  const rect = svg.getBoundingClientRect();
+  const scale = Math.min(rect.width / view.width, rect.height / view.height);
+  const renderedWidth = view.width * scale;
+  const renderedHeight = view.height * scale;
+  return {
+    x: view.x + (event.clientX - rect.left - (rect.width - renderedWidth) / 2) / scale,
+    y: view.y + (event.clientY - rect.top - (rect.height - renderedHeight) / 2) / scale,
+    scale
+  };
 }
 
 function applyMapView() {
@@ -147,7 +160,7 @@ function renderMap() {
   const interactive = session.phase === 'map';
   const active = new Set(GROUPS[session.group].states.map(state => state.code));
   const view = session.mapView;
-  return `<svg class="world-map ${interactive ? 'map-select' : ''}" viewBox="${view.x} ${view.y} ${view.width} ${view.height}" role="img" aria-label="Slepá mapa světa. ${interactive ? 'Klikni na stát.' : 'V tomto kroku vybírej název státu ze seznamu.'}">
+  return `<svg class="world-map ${interactive ? 'map-select' : ''}" viewBox="${view.x} ${view.y} ${view.width} ${view.height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Slepá mapa světa. ${interactive ? 'Klikni na stát.' : 'V tomto kroku vybírej název státu ze seznamu.'}">
     ${mapFeatures.map(feature => `<path class="country ${active.has(feature.code) ? 'is-in-group' : ''} ${session.seenMap.has(feature.code) ? 'is-known' : ''}" data-code="${feature.code}" d="${feature.path}" tabindex="${interactive && !session.seenMap.has(feature.code) ? '0' : '-1'}"></path>`).join('')}
   </svg>`;
 }
@@ -199,11 +212,8 @@ function renderQuiz() {
   const svg = app.querySelector('.world-map');
   svg.addEventListener('wheel', event => {
     event.preventDefault();
-    const rect = svg.getBoundingClientRect();
-    const view = session.mapView;
-    const x = view.x + ((event.clientX - rect.left) / rect.width) * view.width;
-    const y = view.y + ((event.clientY - rect.top) / rect.height) * view.height;
-    zoomMapAt(x, y, event.deltaY < 0 ? .78 : 1 / .78);
+    const point = mapPointFromPointer(svg, event);
+    zoomMapAt(point.x, point.y, event.deltaY < 0 ? .78 : 1 / .78);
   }, { passive: false });
   svg.addEventListener('pointerdown', event => {
     if (event.button !== 0) return;
@@ -221,15 +231,15 @@ function renderQuiz() {
   svg.addEventListener('pointermove', event => {
     const drag = session.mapDrag;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    const rect = svg.getBoundingClientRect();
     const offsetX = event.clientX - drag.startX;
     const offsetY = event.clientY - drag.startY;
     if (Math.abs(offsetX) > 4 || Math.abs(offsetY) > 4) drag.moved = true;
     if (!drag.moved) return;
+    const { scale } = mapPointFromPointer(svg, event, drag.startView);
     session.mapView = clampMapView({
       ...drag.startView,
-      x: drag.startView.x - (offsetX / rect.width) * drag.startView.width,
-      y: drag.startView.y - (offsetY / rect.height) * drag.startView.height
+      x: drag.startView.x - offsetX / scale,
+      y: drag.startView.y - offsetY / scale
     });
     applyMapView();
   });
