@@ -37,9 +37,22 @@ const MAP_CODE_OVERRIDES = {
   Kosovo: 'XKX'
 };
 
+// ISO kód sám o sobě nestačí: některá závislá území ho mají také (např.
+// Falklandy/Malvíny = FLK). V kvízu trénujeme samostatné státy, proto se tyto
+// plochy vůbec nekreslí. Palestina je součástí bloku C a Tchaj-wan ponecháváme
+// jako samostatnou mapovou plochu.
+const NON_SOVEREIGN_MAP_CODES = new Set([
+  'ABW', 'AIA', 'ALA', 'ANT', 'ARU', 'ASM', 'ATA', 'ATF', 'BES', 'BLM', 'BMU', 'BVT',
+  'CCK', 'COK', 'CUW', 'CYM', 'ESH', 'FLK', 'FRO', 'GIB', 'GLP', 'GRL', 'GUF',
+  'GUM', 'HKG', 'HMD', 'IMN', 'IOT', 'JEY', 'MAC', 'MAF', 'MNP', 'MSR', 'NCL',
+  'NFK', 'NIU', 'PCN', 'PRI', 'REU', 'SGS', 'SHN', 'SJM', 'SPM', 'TCA', 'TKL',
+  'UMI', 'VGB', 'VIR', 'WLF'
+]);
+
 const mapCode = feature => {
   const code = feature.properties['ISO3166-1-Alpha-3'];
-  return code === '-99' ? MAP_CODE_OVERRIDES[feature.properties.name] || null : code;
+  if (code === '-99') return MAP_CODE_OVERRIDES[feature.properties.name] || null;
+  return NON_SOVEREIGN_MAP_CODES.has(code) ? null : code;
 };
 
 const asStates = entries => entries.map(([code, name]) => ({ code, name, flag: code.toLowerCase() }));
