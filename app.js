@@ -27,6 +27,8 @@ let mapFeatures = [];
 let selectedGroup = 'C';
 let selectedDifficulty = 'easy';
 let session = null;
+const MIN_MAP_VIEW_WIDTH = 12;
+const MIN_MAP_VIEW_HEIGHT = 5;
 
 // Natural Earth používá kód -99 pro státy bez běžného ISO kódu i pro malé
 // nestátní plochy (základny, útesy, sporná území). Ty druhé by na slepé mapě
@@ -151,9 +153,9 @@ function initialMapView(group) {
 }
 
 function clampMapView(view) {
-  const width = Math.max(120, Math.min(1000, view.width));
+  const width = Math.max(MIN_MAP_VIEW_WIDTH, Math.min(1000, view.width));
   const ratio = Math.max(.25, Math.min(.52, (view.height ?? width * .52) / view.width));
-  const height = Math.max(80, Math.min(520, width * ratio));
+  const height = Math.max(MIN_MAP_VIEW_HEIGHT, Math.min(520, width * ratio));
   return {
     width,
     height,
@@ -164,7 +166,7 @@ function clampMapView(view) {
 
 function zoomMapAt(x, y, factor) {
   const previous = session.mapView;
-  const width = Math.max(120, Math.min(1000, previous.width * factor));
+  const width = Math.max(MIN_MAP_VIEW_WIDTH, Math.min(1000, previous.width * factor));
   const height = width * (previous.height / previous.width);
   const rx = (x - previous.x) / previous.width;
   const ry = (y - previous.y) / previous.height;
@@ -320,7 +322,7 @@ function renderQuiz() {
       if (pinch && session.mapPointers.size >= 2) {
         const [first, second] = [...session.mapPointers.values()];
         const distance = Math.max(1, Math.hypot(second.x - first.x, second.y - first.y));
-        const width = Math.max(120, Math.min(1000, pinch.startView.width * pinch.startDistance / distance));
+        const width = Math.max(MIN_MAP_VIEW_WIDTH, Math.min(1000, pinch.startView.width * pinch.startDistance / distance));
         const height = width * (pinch.startView.height / pinch.startView.width);
         session.mapView = clampMapView({
           width,
