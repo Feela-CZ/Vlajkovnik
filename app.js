@@ -27,8 +27,8 @@ let mapFeatures = [];
 let selectedGroup = 'C';
 let selectedDifficulty = 'easy';
 let session = null;
-const MIN_MAP_VIEW_WIDTH = 12;
-const MIN_MAP_VIEW_HEIGHT = 5;
+const MIN_MAP_VIEW_WIDTH = 2;
+const MIN_MAP_VIEW_HEIGHT = .8;
 
 // Natural Earth používá kód -99 pro státy bez běžného ISO kódu i pro malé
 // nestátní plochy (základny, útesy, sporná území). Ty druhé by na slepé mapě
@@ -232,7 +232,7 @@ function focusMapOnState(code) {
   const { minX, maxX, minY, maxY } = feature.bounds;
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
-  const width = Math.max(28, (maxX - minX) * 3, (maxY - minY) * 3 / .45);
+  const width = Math.max(MIN_MAP_VIEW_WIDTH, (maxX - minX) * 4, (maxY - minY) * 4 / .45);
   session.mapView = clampMapView({
     width,
     height: width * .45,
