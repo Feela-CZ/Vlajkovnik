@@ -135,7 +135,7 @@ body.flag-modal-open { overflow: hidden; }
   .quiz-header { position: sticky; top: 0; z-index: 10; grid-template-columns: 112px minmax(0, 1fr) auto; grid-template-areas: 'flag progress exit' 'flag score score'; gap: 6px 10px; align-items: start; padding: 10px 8px 10px 0; background: linear-gradient(180deg, var(--deep) 82%, rgba(7,31,40,0)); }
   .header-flag { grid-area: flag; display: grid; gap: 5px; align-content: start; width: 112px; padding: 0; color: var(--ink); text-align: left; background: transparent; border: 0; cursor: pointer; }
   .header-flag img { width: 112px; height: 78px; object-fit: contain; border: 0; border-radius: 0; background: transparent; }
-  .header-flag .revealed-name { width: 112px; margin: 2px 0 0; padding-left: 7px; font-size: .73rem; line-height: 1.2; }
+  .header-flag .revealed-name { width: 112px; margin: 2px 0 0; padding-left: 0; font-size: .73rem; line-height: 1.2; }
   .progress-copy { grid-area: progress; margin-top: 5px; font-size: .95rem; line-height: 1.22; }
   .group-name { display: none; }
   .phase { display: none; }
@@ -153,7 +153,6 @@ body.flag-modal-open { overflow: hidden; }
   .map-control { width: 40px; height: 40px; }
   .answer-list { grid-template-columns: 1fr; max-height: calc(100dvh - 292px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 3px; }
   .answer-choice { min-height: 46px; padding: 10px 12px; }
-  .step-result { position: fixed; right: 16px; bottom: max(14px, env(safe-area-inset-bottom)); left: 16px; z-index: 20; margin: 0; padding: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.32); }
-  .step-result .feedback { margin-bottom: 9px; }
+  .step-result { position: fixed; right: 16px; bottom: max(14px, env(safe-area-inset-bottom)); left: 16px; z-index: 20; margin: 0; padding: 0; background: transparent; border: 0; box-shadow: 0 12px 30px rgba(0,0,0,.32); }
   .score-grid { grid-template-columns: 1fr; }
 }

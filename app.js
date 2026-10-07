@@ -237,10 +237,8 @@ function renderQuiz() {
         <aside class="answer-panel">
           <div class="flag-wrap"><img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" /></div>
           <h1 class="task-title">${isName ? 'Který stát má tuto vlajku?' : esc(question.name)}</h1>
-          <p class="task-help">${isName ? 'Vyber jednu odpověď. Správné řešení zůstane zobrazené, dokud nepokračuješ dál.' : 'Klikni na stát na mapě.'}</p>
           <p class="revealed-name desktop-revealed"></p>
           <div class="step-result" id="step-result" hidden>
-            <p class="feedback" id="feedback"></p>
             <button class="continue-button" id="continue-step" type="button"></button>
           </div>
           ${isName ? `<div class="answer-list">${states.map(state => {
@@ -329,12 +327,6 @@ function renderQuiz() {
   }
 }
 
-function feedback(text, type) {
-  const element = app.querySelector('#feedback');
-  element.textContent = text;
-  element.className = `feedback ${type}`;
-}
-
 function answerName(code, button) {
   if (session.locked || (session.difficulty === 'easy' && session.seenNames.has(code))) return;
   const question = currentQuestion();
@@ -346,10 +338,8 @@ function answerName(code, button) {
   button.classList.add(correct ? 'is-correct' : 'is-wrong');
   if (correct) {
     session.nameFirst += 1;
-    feedback('Správně. Teď ho najdi na mapě.', 'good');
   } else {
     session.nameErrors += 1;
-    feedback('Správná odpověď je uvedená nad seznamem. Teď ho najdi na mapě.', 'bad');
   }
   revealContinue('Pokračovat na mapu', () => { session.phase = 'map'; session.locked = false; renderQuiz(); });
 }
@@ -363,13 +353,11 @@ function answerMap(code, path) {
   if (correct) {
     session.mapFirst += 1;
     path.classList.add('is-correct');
-    feedback('Správně.', 'good');
   } else {
     session.mapErrors += 1;
     path.classList.add('is-wrong');
     const correctPath = app.querySelector(`.country[data-code="${question.code}"]`);
     correctPath?.classList.add('is-correct');
-    feedback(`Správně je ${question.name}.`, 'bad');
   }
   revealContinue(session.index + 1 === session.questions.length ? 'Zobrazit výsledek' : 'Další vlajka', nextQuestion);
 }
