@@ -170,7 +170,7 @@ function renderMap() {
   const active = new Set(GROUPS[session.group].states.map(state => state.code));
   const view = session.mapView;
   return `<svg class="world-map ${interactive ? 'map-select' : ''}" viewBox="${view.x} ${view.y} ${view.width} ${view.height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Slepá mapa světa. ${interactive ? 'Klikni na stát.' : 'V tomto kroku vybírej název státu ze seznamu.'}">
-    ${mapFeatures.map(feature => `<path class="country ${active.has(feature.code) ? 'is-in-group' : ''} ${session.seenMap.has(feature.code) ? 'is-known' : ''}" data-code="${feature.code}" d="${feature.path}" tabindex="${interactive && !session.seenMap.has(feature.code) ? '0' : '-1'}"></path>`).join('')}
+    ${mapFeatures.map(feature => `<path class="country ${active.has(feature.code) ? 'is-in-group' : ''} ${session.seenMap.has(feature.code) ? 'is-known' : ''}" data-code="${feature.code}" d="${feature.path}" tabindex="-1"></path>`).join('')}
   </svg>`;
 }
 
@@ -278,7 +278,6 @@ function renderQuiz() {
         if (session.ignoreNextMapClick) return;
         answerMap(path.dataset.code, path);
       });
-      path.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); answerMap(path.dataset.code, path); } });
     });
   }
 }
