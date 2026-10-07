@@ -141,7 +141,6 @@ function revealContinue(label, action) {
   result.hidden = false;
   button.textContent = label;
   button.addEventListener('click', action, { once: true });
-  result.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function initialMapView(group) {
@@ -221,7 +220,7 @@ function renderQuiz() {
         </button>
         <p class="progress-copy"><strong><span class="group-name">${group.label} · </span>${session.index + 1} / ${session.questions.length}</strong></p>
         <span class="phase">Krok ${isName ? '1' : '2'} ze 2 · ${isName ? 'Název státu' : 'Poloha na mapě'}</span>
-        <p class="score-copy">Vlajka <strong>${nameScore}</strong> · Mapa <strong>${mapScore}</strong></p>
+        <p class="score-copy"><span>Skóre:</span> Vlajka <strong>${nameScore}</strong> · Mapa <strong>${mapScore}</strong></p>
         <button class="exit-button" id="exit-session">Změnit blok</button>
       </header>
       <div class="progress-track" aria-label="Průběh tréninku"><span style="width:${progressPercent()}%"></span></div>
