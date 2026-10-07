@@ -94,6 +94,7 @@ h1 { max-width: 760px; margin: 0; font-size: clamp(2.35rem, 5vw, 4.8rem); line-h
 .revealed-name { display: none; margin: 0 0 13px; color: var(--green); font-size: .94rem; font-weight: 760; }
 .revealed-name.is-visible { display: block; }
 .step-result { margin: 0 0 15px; padding: 12px; background: rgba(7,31,40,.34); border: 1px solid rgba(169,192,189,.2); border-radius: 10px; }
+.map-step-result { position: absolute; right: 16px; bottom: 16px; left: 16px; z-index: 4; margin: 0; }
 .feedback { min-height: 22px; margin: 0 0 10px; font-size: .89rem; font-weight: 650; }
 .feedback.good { color: var(--green); }
 .feedback.bad { color: #ffb1b1; }
@@ -144,7 +145,7 @@ body.flag-modal-open { overflow: hidden; }
   .exit-button { grid-area: exit; width: auto; height: auto; margin-right: 4px; padding: 7px 9px; color: var(--muted); font-size: .72rem; line-height: 1; border: 1px solid rgba(169,192,189,.3); border-radius: 8px; }
   .progress-track { margin-bottom: 10px; }
   .quiz-layout.is-name-phase .map-panel { display: none; }
-  .quiz-layout.is-name-phase .answer-panel { min-height: 0; }
+  .quiz-layout.is-name-phase .answer-panel { min-height: calc(100dvh - 242px); }
   .quiz-layout.is-map-phase { grid-template-columns: 1fr; }
   .quiz-layout.is-map-phase .answer-panel { display: none; }
   .map-controls { display: none; }
@@ -154,8 +155,9 @@ body.flag-modal-open { overflow: hidden; }
   .desktop-revealed { display: none !important; }
   .world-map { min-height: 310px; }
   .map-control { width: 40px; height: 40px; }
-  .answer-list { grid-template-columns: 1fr; max-height: calc(100dvh - 292px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 3px; }
+  .answer-list { flex: 1; min-height: 0; grid-template-columns: 1fr; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 3px; }
   .answer-choice { min-height: 46px; padding: 10px 12px; }
   .step-result { position: fixed; right: 16px; bottom: max(14px, env(safe-area-inset-bottom)); left: 16px; z-index: 20; margin: 0; padding: 0; background: transparent; border: 0; box-shadow: 0 12px 30px rgba(0,0,0,.32); }
+  .map-step-result { position: fixed; }
   .score-grid { grid-template-columns: 1fr; }
 }

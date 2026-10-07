@@ -147,6 +147,12 @@ function revealContinue(label, action) {
   button.addEventListener('click', action, { once: true });
 }
 
+function continueMarkup(extraClass = '') {
+  return `<div class="step-result ${extraClass}" id="step-result" hidden>
+    <button class="continue-button" id="continue-step" type="button"></button>
+  </div>`;
+}
+
 function initialMapView(group) {
   if (group === 'A') return { x: 140, y: 115, width: 720, height: 300 };
   return { x: 0, y: 60, width: 1000, height: 400 };
@@ -241,14 +247,13 @@ function renderQuiz() {
             <button class="map-control" type="button" data-map-action="reset" aria-label="Vrátit výchozí zobrazení">↺</button>
           </div>
           ${renderMap()}
+          ${isName ? '' : continueMarkup('map-step-result')}
         </section>
         <aside class="answer-panel">
           <div class="flag-wrap"><img src="${FLAG_IMAGES[question.flag]}" alt="Vlajka k určení" /></div>
           <h1 class="task-title">${isName ? 'Který stát má tuto vlajku?' : esc(question.name)}</h1>
           <p class="revealed-name desktop-revealed"></p>
-          <div class="step-result" id="step-result" hidden>
-            <button class="continue-button" id="continue-step" type="button"></button>
-          </div>
+          ${isName ? continueMarkup() : ''}
           ${isName ? `<div class="answer-list">${states.map(state => {
             const known = session.difficulty === 'easy' && session.seenNames.has(state.code);
             return `<button class="answer-choice ${known ? 'is-known' : ''}" data-name-choice="${state.code}" ${known ? 'disabled' : ''}>${esc(state.name)}</button>`;
